@@ -129,12 +129,39 @@ void funcion5(int argc, char* argv[]) {
 	return;
 }
 
+void funcion6_BCAST(int argc, char* argv[]) {
+	int rank, size, length, root;
+	char name[MPI_MAX_PROCESSOR_NAME];
+	MPI_Init(&argc, &argv);
+	MPI_Get_processor_name(name, &length);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	root = 0;
+	const int sizeBuffer = 12;
+	char message[sizeBuffer];	
+
+	if (rank == 0) {
+		int a = sprintf_s(message, "Hola pepito");		
+	}
+	MPI_Bcast(&message, sizeBuffer, MPI_CHAR, root, MPI_COMM_WORLD);
+	printf("[Proceso %d] He recibido del proceso %d, el mensaje: %s\n", rank, root, message);
+			
+	MPI_Finalize();
+	return;
+}
+
+void funcion6_PtP(int argc, char* argv[]) {
+
+}
+
 int main(int argc, char* argv[])
 {
 	//funcion1(argc, argv);
 	//funcion2(argc, argv);
 	//funcion3(argc, argv);
 	//funcion4(argc, argv);
-	funcion5(argc, argv);
+	//funcion5(argc, argv);
+	funcion6_BCAST(argc, argv);
+	//funcion6_PtP(argc, argv);
 	return 0;
 }
