@@ -1,5 +1,8 @@
 #include "mpi.h"
 #include <stdio.h>
+#include <string.h>
+#include <random>
+#include <time.h>
 
 void funcion1(int argc, char* argv[]) {
 	int rank, size, length;
@@ -129,7 +132,7 @@ void funcion5(int argc, char* argv[]) {
 	return;
 }
 
-void funcion6_BCAST(int argc, char* argv[]) {
+void funcion6_BCAST(int argc, char* argv[], char* text) {
 	int rank, size, length, root;
 	char name[MPI_MAX_PROCESSOR_NAME];
 	MPI_Init(&argc, &argv);
@@ -137,31 +140,177 @@ void funcion6_BCAST(int argc, char* argv[]) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	root = 0;
-	const int sizeBuffer = 12;
-	char message[sizeBuffer];	
+	const int sizeBuffer = 480001;
+	char message[sizeBuffer];
 
+	double tinicial = MPI_Wtime();
 	if (rank == 0) {
-		int a = sprintf_s(message, "Hola pepito");		
+		sprintf_s(message, text);
 	}
-	MPI_Bcast(&message, sizeBuffer, MPI_CHAR, root, MPI_COMM_WORLD);
-	printf("[Proceso %d] He recibido del proceso %d, el mensaje: %s\n", rank, root, message);
-			
+	MPI_Bcast(&message, sizeBuffer, MPI_CHAR, root, MPI_COMM_WORLD);	
+	double tfinal = MPI_Wtime() - tinicial;
+	printf("\t[Proceso %d] He recibido del proceso %d, el mensaje de longitud %d, con tiempo: %f s.\n", rank, root, strlen(message), tfinal);
 	MPI_Finalize();
 	return;
 }
 
-void funcion6_PtP(int argc, char* argv[]) {
+void funcion6_PtP(int argc, char* argv[], char * text) {
+	int rank, size, length, root;
+	char name[MPI_MAX_PROCESSOR_NAME];
+	MPI_Init(&argc, &argv);
+	MPI_Get_processor_name(name, &length);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	root = 0;
+	const int sizeBuffer = 480001;
+	char message[sizeBuffer];
+	char messa[sizeBuffer];
 
+	MPI_Status status[2];
+	MPI_Request request[2];
+
+	double tinicial = MPI_Wtime();
+	if (rank == 0) {		
+		sprintf_s(message, text);
+		for (int i = 1; i < size; i++) {
+			MPI_Isend(&message, sizeBuffer, MPI_CHAR, i, 1, MPI_COMM_WORLD, &request[1]);
+		}		
+	} else {		
+		MPI_Irecv(&messa, sizeBuffer, MPI_CHAR, root, 1, MPI_COMM_WORLD, &request[0]);
+	}
+	MPI_Waitall(2, request, status);
+	double tfinal = MPI_Wtime() - tinicial;
+	printf("\t[Proceso %d] He recibido del proceso %d, el mensaje de longitud %d, con tiempo: %f s.\n", rank, root, strlen(messa), tfinal);
+	MPI_Finalize();
+}
+
+char* generateChar(int size) {
+	int s = size + 1;
+	char * res = new char[s];
+	for (int i = 0; i < size; i++) {
+		res[i] = (char) ((rand() % (122 - 97)) + 97);
+	}
+	res[size] = '\0';
+	return res;
+}
+
+void funcion6(int argc, char* argv[], int size, bool bcast) {
+	char* text = generateChar(size);
+	if (bcast) {
+		funcion6_BCAST(argc, argv, text);
+	} else {
+		funcion6_PtP(argc, argv, text);
+	}		
+}
+
+void funcion7(int argc, char* argv[]) {
+	int rank, size, length, root, tot;
+	char name[MPI_MAX_PROCESSOR_NAME];
+	MPI_Init(&argc, &argv);
+	MPI_Get_processor_name(name, &length);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	root = 0;
+	const int mult = 2;
+	tot = size*mult;
+
+	float* values = new float[tot];
+	if (rank == root) {		
+		float sum = 0;
+		for (int i = 0; i < tot; i++) {
+			values[i] = (float)i;
+			sum += values[i];
+			printf("%4.2f ", values[i]);
+		}		
+		printf("----La suma total es: %f\n", sum);
+	}
+
+	float recv[mult];
+	MPI_Scatter(values, mult, MPI_FLOAT, recv, mult, MPI_FLOAT, root, MPI_COMM_WORLD);
+
+	float sumT = 0;
+	for (int x = 0; x < mult; x++) {
+		sumT += recv[x];
+	}
+	printf("[Proceso %d] La suma de mis elementos es: %f\n", rank, sumT);
+
+	float* recvSum = NULL;
+	if (rank == root) {
+		recvSum = new float[size];
+	}
+
+	MPI_Gather(&sumT, 1, MPI_FLOAT, recvSum, 1, MPI_FLOAT, root, MPI_COMM_WORLD);
+
+	if (rank == root) {
+		float sumTotal = 0;
+		for (int i = 0; i < size; i++) {
+			sumTotal += recvSum[i];
+		}
+		printf("La suma de los elementos es: %f\n", sumTotal);
+	}	
+	MPI_Finalize();
+}
+
+void funcion8(int argc, char* argv[]) {
+	int rank, size, length, root, tot;
+	char name[MPI_MAX_PROCESSOR_NAME];
+	MPI_Init(&argc, &argv);
+	MPI_Get_processor_name(name, &length);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	root = 0;
+	const int mult = 2;
+	tot = size * mult;
+
+	float* values = new float[tot];
+	if (rank == root) {
+		float sum = 0;
+		for (int i = 0; i < tot; i++) {
+			values[i] = (float)i;
+			sum += values[i];
+			printf("%4.2f ", values[i]);
+		}
+		printf("----La suma total es: %f\n", sum);
+	}
+
+	float recv[mult];
+	MPI_Scatter(values, mult, MPI_FLOAT, recv, mult, MPI_FLOAT, root, MPI_COMM_WORLD);
+
+	float sumT = 0;
+	for (int x = 0; x < mult; x++) {
+		sumT += recv[x];
+	}
+	printf("[Proceso %d] La suma de mis elementos es: %f\n", rank, sumT);
+
+	float* recvSum = NULL;
+	if (rank == root) {
+		recvSum = new float[size];
+	}
+
+	MPI_Gather(&sumT, 1, MPI_FLOAT, recvSum, 1, MPI_FLOAT, root, MPI_COMM_WORLD);
+
+	if (rank == root) {
+		float sumTotal = 0;
+		for (int i = 0; i < size; i++) {
+			sumTotal += recvSum[i];
+		}
+		printf("La suma de los elementos es: %f\n", sumTotal);
+	}
+	MPI_Finalize();
 }
 
 int main(int argc, char* argv[])
 {
+	srand((unsigned)time(NULL));
 	//funcion1(argc, argv);
 	//funcion2(argc, argv);
 	//funcion3(argc, argv);
 	//funcion4(argc, argv);
 	//funcion5(argc, argv);
-	funcion6_BCAST(argc, argv);
-	//funcion6_PtP(argc, argv);
+	//funcion6(argc, argv, 480000, true);
+	//funcion7(argc, argv);
+
+	/*SIN DEFENDER*/
+	funcion8(argc, argv);
 	return 0;
 }
