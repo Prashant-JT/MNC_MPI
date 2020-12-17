@@ -3,6 +3,7 @@
 #include <string.h>
 #include <random>
 #include <time.h>
+#define vsize 1000
 
 void funcion1(int argc, char* argv[]) {
 	int rank, size, length;
@@ -239,6 +240,8 @@ void funcion7(int argc, char* argv[]) {
 		recvSum = new float[size];
 	}
 
+	MPI_Barrier(MPI_COMM_WORLD);
+
 	MPI_Gather(&sumT, 1, MPI_FLOAT, recvSum, 1, MPI_FLOAT, root, MPI_COMM_WORLD);
 
 	if (rank == root) {
@@ -252,6 +255,66 @@ void funcion7(int argc, char* argv[]) {
 }
 
 void funcion8(int argc, char* argv[]) {
+	int rank, size, length, root, tot;
+	char name[MPI_MAX_PROCESSOR_NAME];
+	MPI_Init(&argc, &argv);
+	MPI_Get_processor_name(name, &length);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	root = 0;
+	const int mult = 10000;
+	tot = size * mult;
+	double startT;
+
+	double* values = new double[tot];
+	if (rank == root) {		
+		for (int i = 0; i < tot; i++) {
+			values[i] = (double)i;
+		}
+
+		double start = MPI_Wtime();
+		double sum = 0;
+		for (int j = 0; j < tot; j++) {
+			for (int x = 0; x < 10000; x++) sum += values[j];
+		}
+		double end = MPI_Wtime() - start;
+		printf("La suma total en secuencial es: %f\n", sum);
+		printf("El tiempo total en secuencial es: %f\n", end);
+
+		startT = MPI_Wtime();
+	}
+
+	double recv[mult];
+	MPI_Scatter(values, mult, MPI_DOUBLE, recv, mult, MPI_DOUBLE, root, MPI_COMM_WORLD);
+
+	double sumT = 0;
+	for (int x = 0; x < mult; x++) {
+		for (int i = 0; i < 10000; i++)	sumT += recv[x];
+	}
+	//printf("[Proceso %d] La suma de mis elementos es: %f\n", rank, sumT);
+
+	double* recvSum = NULL;
+	if (rank == root) {
+		recvSum = new double[size];
+	}
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	MPI_Gather(&sumT, 1, MPI_DOUBLE, recvSum, 1, MPI_DOUBLE, root, MPI_COMM_WORLD);
+
+	if (rank == root) {
+		double sumTotal = 0;
+		for (int i = 0; i < size; i++) {
+			sumTotal += recvSum[i];
+		}
+		double endT = MPI_Wtime() - startT;
+		printf("La suma de los elementos en paralelo es: %f\n", sumTotal);
+		printf("El tiempo total en paralelo es: %f\n", endT);
+	}
+	MPI_Finalize();
+}
+
+void funcion9(int argc, char* argv[]) {
 	int rank, size, length, root, tot;
 	char name[MPI_MAX_PROCESSOR_NAME];
 	MPI_Init(&argc, &argv);
@@ -282,19 +345,65 @@ void funcion8(int argc, char* argv[]) {
 	}
 	printf("[Proceso %d] La suma de mis elementos es: %f\n", rank, sumT);
 
-	float* recvSum = NULL;
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	float sumTotal;
+	MPI_Reduce(&sumT, &sumTotal, 1, MPI_FLOAT, MPI_SUM, root, MPI_COMM_WORLD);
+
+	if (rank == root) {		
+		printf("La suma de los elementos es: %f\n", sumTotal);
+	}
+	MPI_Finalize();
+}
+
+void funcion10(int argc, char* argv[]) {
+	int rank, size, length, root, tot;
+	char name[MPI_MAX_PROCESSOR_NAME];
+	MPI_Init(&argc, &argv);
+	MPI_Get_processor_name(name, &length);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	root = 0;
+	const int mult = 10000;
+	tot = size * mult;
+	double startT = MPI_Wtime();
+
+	double* values = new double[tot];
 	if (rank == root) {
-		recvSum = new float[size];
+		for (int i = 0; i < tot; i++) {
+			values[i] = (double)i;
+		}
+
+		double start = MPI_Wtime();
+		double sum = 0;
+		for (int j = 0; j < tot; j++) {
+			for (int x = 0; x < 10000; x++) sum += values[j];
+		}
+		double end = MPI_Wtime() - start;
+		printf("La suma total en secuencial es: %f\n", sum);
+		printf("El tiempo total en secuencial es: %f\n", end);
+
+		startT = MPI_Wtime();
 	}
 
-	MPI_Gather(&sumT, 1, MPI_FLOAT, recvSum, 1, MPI_FLOAT, root, MPI_COMM_WORLD);
+	double recv[mult];
+	MPI_Scatter(values, mult, MPI_DOUBLE, recv, mult, MPI_DOUBLE, root, MPI_COMM_WORLD);
+
+	double sumT = 0;
+	for (int x = 0; x < mult; x++) {
+		for (int i = 0; i < 10000; i++) sumT += recv[x];
+	}
+	//printf("[Proceso %d] La suma de mis elementos es: %f\n", rank, sumT);
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	double sumTotal;
+	MPI_Reduce(&sumT, &sumTotal, 1, MPI_DOUBLE, MPI_SUM, root, MPI_COMM_WORLD);
 
 	if (rank == root) {
-		float sumTotal = 0;
-		for (int i = 0; i < size; i++) {
-			sumTotal += recvSum[i];
-		}
-		printf("La suma de los elementos es: %f\n", sumTotal);
+		double endT = MPI_Wtime() - startT;
+		printf("La suma de los elementos en paralelo es: %f\n", sumTotal);
+		printf("El tiempo total en paralelo es: %f\n", endT);
 	}
 	MPI_Finalize();
 }
@@ -311,6 +420,8 @@ int main(int argc, char* argv[])
 	//funcion7(argc, argv);
 
 	/*SIN DEFENDER*/
-	funcion8(argc, argv);
+	//funcion8(argc, argv);
+	//Este método es igual que el 10. funcion9(argc, argv);
+	funcion10(argc, argv);
 	return 0;
 }
