@@ -1,0 +1,11 @@
+﻿  practica1.cpp
+C:\Users\remoto\source\repos\MPI\practica7_1\practica1.cpp(153,9): warning C4477: 'printf' : la cadena de formato '%d' requiere un argumento de tipo 'int', pero el argumento variádico 3 tiene el tipo 'size_t'
+C:\Users\remoto\source\repos\MPI\practica7_1\practica1.cpp(153,9): message : considere el uso de ' %zd' en la cadena de formato
+C:\Users\remoto\source\repos\MPI\practica7_1\practica1.cpp(184,9): warning C4477: 'printf' : la cadena de formato '%d' requiere un argumento de tipo 'int', pero el argumento variádico 3 tiene el tipo 'size_t'
+C:\Users\remoto\source\repos\MPI\practica7_1\practica1.cpp(184,9): message : considere el uso de ' %zd' en la cadena de formato
+  Generando código
+  2 of 6 functions (33.3%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  Generación de código finalizada
+  practica7_1.vcxproj -> C:\Users\remoto\source\repos\MPI\practica7_1\x64\Release\practica7_1.exe
